@@ -1,0 +1,28 @@
+
+/* PDF Export Styles */
+@page { size: 1920px 1080px; margin: 0; }
+body { margin: 0; font-family: 'Inter', sans-serif; background: #fff; color: #333; }
+.slide { 
+    width: 1920px; 
+    height: 1080px; 
+    page-break-after: always; 
+    position: relative; 
+    display: flex; 
+    flex-direction: column; 
+    box-sizing: border-box; 
+    padding: 80px; 
+    background: white;
+}
+.layout-title { 
+    justify-content: center; 
+    align-items: center; 
+    text-align: center;
+    background: #222;
+    color: white;
+}
+.layout-center { 
+    justify-content: center; 
+    align-items: center; 
+}
+h1 { font-size: 80px; margin-bottom: 20px; }
+p, li { font-size: 40px; line-height: 1.5; }
