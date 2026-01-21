@@ -1,4 +1,0 @@
-Worker started for: graph LR;
-    A[Mark...
-ASCII generated (len=1215)
-Worker failed: The `call_from_thread` method must run in a different thread from the app
