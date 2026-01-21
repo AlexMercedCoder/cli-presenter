@@ -1,23 +1,66 @@
 from textual.app import App, ComposeResult
-from textual.widgets import Footer, Markdown, Static
+from textual.widgets import Header, Footer, Markdown, Static
 from textual.containers import Container, ScrollableContainer
 from textual.binding import Binding
+from textual import work
+import asyncio
 from typing import List
 import os
 from .parser import Slide
+from .ascii_renderer import render_mermaid_to_ascii
+import re
 
 class SlideWidget(ScrollableContainer):
-    """Widget to display a single slide."""
-    
     def __init__(self, slide: Slide, **kwargs):
         super().__init__(**kwargs)
         self.slide = slide
-        # Add layout class if present
-        layout = slide.metadata.get("layout", "default")
-        self.add_class(f"layout-{layout}")
-    
+        self.classes = f"layout-{slide.metadata.get('layout', 'default')}"
+
     def compose(self) -> ComposeResult:
-        yield Markdown(self.slide.content)
+        yield Markdown(self.slide.content, id="slide-content")
+
+    def on_mount(self) -> None:
+        """Check for mermaid blocks to replace async."""
+        # Check for mermaid block
+        mermaid_pattern = re.compile(r'```mermaid\s+(.*?)```', re.DOTALL)
+        match = mermaid_pattern.search(self.slide.content)
+        if match:
+             self.load_mermaid_ascii(match.group(1))
+
+    @work(exclusive=True)
+    async def load_mermaid_ascii(self, mermaid_code: str) -> None:
+        """Background worker to render mermaid to ascii."""
+        try:
+            with open("debug_mermaid.log", "a") as f:
+                f.write(f"Worker started for: {mermaid_code[:20]}...\n")
+
+            loop = asyncio.get_running_loop()
+            ascii_art = await loop.run_in_executor(None, render_mermaid_to_ascii, mermaid_code)
+            
+            with open("debug_mermaid.log", "a") as f:
+                f.write(f"ASCII generated (len={len(ascii_art)})\n")
+
+            # Replace the mermaid block in the content with the ASCII art
+            current_content = self.slide.content
+            
+            # Simple approach: Replace substring
+            def replacer(m):
+                # Returns ASCII block
+                return f"```text\n{ascii_art}\n```"
+
+            new_content = re.sub(r'```mermaid\s+(.*?)```', replacer, current_content, flags=re.DOTALL)
+            
+            # Update the widget
+            markdown_widget = self.query_one("#slide-content", Markdown)
+            self.app.call_from_thread(markdown_widget.update, new_content)
+
+            with open("debug_mermaid.log", "a") as f:
+                f.write("Widget updated\n")
+
+        except Exception as e:
+            with open("debug_mermaid.log", "a") as f:
+                f.write(f"Worker failed: {e}\n")
+            pass
 
 class PresenterApp(App):
     """A terminal-based presentation tool."""

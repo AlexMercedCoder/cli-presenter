@@ -21,9 +21,19 @@ SlideWidget {
 """
 
 DEFAULT_TEMPLATE_CSS = """
-/* HTML Export Styles */
+/* Corporate Layout - CLI Presenter */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
 @page { size: 1920px 1080px; margin: 0; }
-body { margin: 0; font-family: 'Inter', sans-serif; background: #eee; color: #333; }
+
+body { 
+    margin: 0; 
+    font-family: 'Inter', sans-serif; 
+    background: #f0f2f5; 
+    color: #334155; 
+    -webkit-font-smoothing: antialiased;
+}
+
 .slide { 
     width: 1920px; 
     height: 1080px; 
@@ -32,35 +42,97 @@ body { margin: 0; font-family: 'Inter', sans-serif; background: #eee; color: #33
     display: flex; 
     flex-direction: column; 
     box-sizing: border-box; 
-    padding: 80px; 
+    padding: 80px 120px; 
     margin: 20px auto;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    overflow: hidden;
 }
-.logo {
-    position: absolute;
-    top: 40px;
-    right: 40px;
-    height: 80px;
-    width: auto;
-}
+
+/* Print / PDF Fixes */
 @media print {
     body { background: white; }
-    .slide { margin: 0; box-shadow: none; page-break-after: always; }
+    .slide { margin: 0; box-shadow: none; page-break-after: always; border: none; }
 }
+
+/* Typography */
+h1 { 
+    font-size: 72px; 
+    font-weight: 700; 
+    color: #1e293b; 
+    margin-bottom: 40px; 
+    border-bottom: 4px solid #3b82f6; 
+    padding-bottom: 20px;
+    display: inline-block;
+}
+
+h2 { font-size: 48px; color: #334155; margin-bottom: 30px; }
+p, li { font-size: 36px; line-height: 1.6; color: #475569; margin-bottom: 16px; }
+
+ul { margin-left: 40px; }
+li::marker { color: #3b82f6; font-weight: bold; }
+
+/* Layouts */
 .layout-title { 
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: white;
     justify-content: center; 
     align-items: center; 
     text-align: center;
-    background: #222;
-    color: white;
 }
+
+.layout-title h1 {
+    color: white;
+    font-size: 100px;
+    border-bottom: none;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.layout-title h2 {
+    color: #94a3b8;
+    font-size: 48px;
+    font-weight: 300;
+}
+
 .layout-center { 
     justify-content: center; 
     align-items: center; 
+    text-align: center;
 }
-h1 { font-size: 80px; margin-bottom: 20px; }
-p, li { font-size: 40px; line-height: 1.5; }
-pre.mermaid { background: transparent; display: flex; justify-content: center; }
+
+/* Components */
+.logo {
+    position: absolute;
+    top: 60px;
+    right: 60px;
+    height: 60px;
+    width: auto;
+    opacity: 0.9;
+}
+
+pre {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 40px;
+    border: 1px solid #e2e8f0;
+    font-size: 28px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+blockquote {
+    border-left: 8px solid #3b82f6;
+    padding-left: 40px;
+    font-style: italic;
+    color: #475569;
+    font-size: 48px;
+    margin: 80px 0;
+}
+
+.mermaid { 
+    display: flex; 
+    justify-content: center; 
+    margin-top: 40px; 
+}
 """
 
 UPDATED_TEMPLATE_MD = """layout: title
@@ -157,12 +229,12 @@ def present(file: str = typer.Argument(..., help="Path to the markdown presentat
 @app.command()
 def export(
     file: str = typer.Argument(..., help="Path to input markdown file"),
-    output: str = typer.Option("presentation.html", "--output", "-o", help="Output HTML file path (or PDF if --pdf is used)"),
+    output: str = typer.Option("presentation", "--output", "-o", help="Base filename for output (extension ignored)"),
     css: str = typer.Option("template.css", "--css", "-c", help="Path to CSS file for styling"),
-    pdf: bool = typer.Option(False, "--pdf", "-p", help="Convert to PDF using Playwright (requires playwright installed)")
+    skip_pdf: bool = typer.Option(False, "--skip-pdf", help="Skip PDF generation")
 ):
     """
-    Export the presentation to HTML, optionally converting to PDF.
+    Export the presentation to both HTML and PDF.
     """
     try:
         if not os.path.exists(file):
@@ -172,31 +244,28 @@ def export(
         slides = parse_deck(file)
         css_path = css if os.path.exists(css) else None
         
-        # Decide output path
-        html_output = output
-        if pdf and not output.endswith(".html"):
-             # If user asked for PDF, use a temp HTML file
-             html_output = "temp_presentation.html"
+        # Determine base path (strip extension if user provided one)
+        base_path = os.path.splitext(output)[0]
+        html_output = f"{base_path}.html"
+        pdf_output = f"{base_path}.pdf"
         
-        typer.secho(f"Exporting {file} to HTML...", fg=typer.colors.BLUE)
+        # 1. Export HTML
+        typer.secho(f"Exporting HTML to {html_output}...", fg=typer.colors.BLUE)
         export_to_html(slides, html_output, css_path)
+        typer.secho(f"HTML Export successful: {html_output}", fg=typer.colors.GREEN)
         
-        if pdf:
-            pdf_output = output if output.endswith(".pdf") else output + ".pdf"
-            typer.secho(f"Converting HTML to PDF: {pdf_output}...", fg=typer.colors.BLUE)
-            export_to_pdf_playwright(html_output, pdf_output)
-            
-            # Cleanup temp file
-            if html_output == "temp_presentation.html":
-                os.remove(html_output)
-                
-            typer.secho(f"Successfully exported to {pdf_output}", fg=typer.colors.GREEN)
-        else:
-             typer.secho(f"Successfully exported to {output}", fg=typer.colors.GREEN)
-             typer.secho("To get a PDF: Open this file in your browser and select 'Print -> Save as PDF', OR run with --pdf flag.", fg=typer.colors.YELLOW)
+        # 2. Export PDF
+        if not skip_pdf:
+            try:
+                typer.secho(f"Exporting PDF to {pdf_output}...", fg=typer.colors.BLUE)
+                export_to_pdf_playwright(html_output, pdf_output)
+                typer.secho(f"PDF Export successful: {pdf_output}", fg=typer.colors.GREEN)
+            except ImportError:
+                 typer.secho("PDF Export skipped: Playwright not installed.", fg=typer.colors.YELLOW)
+                 typer.secho("Run 'pip install playwright && playwright install' to enable PDF export.", fg=typer.colors.WHITE)
+            except Exception as e:
+                 typer.secho(f"PDF Export failed: {e}", fg=typer.colors.RED)
         
-    except ImportError as e:
-        typer.secho(f"Dependency Error: {e}", fg=typer.colors.RED)
     except Exception as e:
         typer.secho(f"Error exporting: {e}", fg=typer.colors.RED)
         raise typer.Exit(code=1)

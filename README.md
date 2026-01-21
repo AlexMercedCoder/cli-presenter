@@ -14,6 +14,7 @@ For automated PDF export, install `playwright`:
 pip install playwright
 playwright install
 ```
+If `playwright` is not installed, the PDF export step will be skipped automatically.
 
 ## Quick Start
 
@@ -111,20 +112,18 @@ Edit `template.css` to control the specific look of the exported file.
 
 ## Exporting
 
-### To HTML
+The `export` command generates both **HTML** and **PDF** files by default (if Playwright is installed).
+
 ```bash
-cli-presenter export my_deck.md --output final.html
+cli-presenter export my_deck.md --output final
 ```
-This generates a standalone HTML file with embedded navigation scripts.
+This will create:
+- `final.html`
+- `final.pdf`
 
-### To PDF
-There are two ways to generate a PDF:
+If you don't have Playwright installed, it will generate the HTML and print a warning that PDF export was skipped.
 
-1. **Manual (Recommended)**: 
-   Export to HTML, open in Chrome/Edge/Safari, and select **Print -> Save as PDF**. Ensure "Background Graphics" is enabled.
-
-2. **Automated (Requires Playwright)**:
-   ```bash
-   cli-presenter export my_deck.md --pdf --output final.pdf
-   ```
-   This uses a headless browser to generate the PDF automatically.
+To skip PDF generation manually:
+```bash
+cli-presenter export my_deck.md --skip-pdf
+```
